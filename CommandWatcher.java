@@ -39,40 +39,37 @@ public class CommandWatcher implements Watcher{
 						String reply = "`Not Available- We do not sell this product";
 						byte[] replyByte = reply.getBytes();
 						zoo.setData("/" + clientName, replyByte, -1);
-						zoo.getData("/command", new CommandWatcher(zoo), null);
-						return;
 					}
 					else if (zoo.getData("/store/" + item, false, null)[0] == 0){
 						String reply = "`Not Available- Not Enough Items";
 						byte[] replyByte = reply.getBytes();
 						zoo.setData("/" + clientName, replyByte, -1);
-						zoo.getData("/command", new CommandWatcher(zoo), null);
-						return;
-					}
-					//change store
-					int quantity = (zoo.getData("/store/" + item, false, null)[0]);
-					quantity = quantity - purchasedQuantity;
-					byte[] byteQuantity = {(byte)quantity};
-					zoo.setData("/store/" + item, byteQuantity, -1);
-					//change order
-					zoo.create("/orders/" + orderCount, recievedCommandByte, ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
-					orderCount += 1;
-					//customer exsits
-					byte[] placeholder = {0};
-					if (zoo.exists("/customers/" + clientName, null) != null){
-						zoo.create("/customers/" + clientName + "/" + orderCount, placeholder, ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
 					}
 					else{
-						zoo.create("/customers/" + clientName, placeholder, ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
-						zoo.create("/customers/" + clientName + "/" + orderCount, placeholder, ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+						//change store
+						int quantity = (zoo.getData("/store/" + item, false, null)[0]);
+						quantity = quantity - purchasedQuantity;
+						byte[] byteQuantity = {(byte)quantity};
+						zoo.setData("/store/" + item, byteQuantity, -1);
+						//change order
+						zoo.create("/orders/" + orderCount, recievedCommandByte, ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL);
+						
+						//customer exsits
+						byte[] placeholder = {0};
+						if (zoo.exists("/customers/" + clientName, null) != null){
+							zoo.create("/customers/" + clientName + "/" + orderCount, placeholder, ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL);
+						}
+						else{
+							zoo.create("/customers/" + clientName, placeholder, ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+							zoo.create("/customers/" + clientName + "/" + orderCount, placeholder, ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL);
+						}
+						orderCount += 1;
+						String reply = "Your order has been placed, ## " + name + " " + item + " " + quantity;
+						byte[] replyByte = reply.getBytes();
+						zoo.setData("/" + clientName, replyByte, -1);
+						//for debugging
+						System.out.println(item + " " + quantity);
 					}
-					String reply = "Your order has been placed, ## " + name + " " + item + " " + quantity;
-					byte[] replyByte = reply.getBytes();
-					zoo.setData("/" + clientName, replyByte, -1);
-					//set watcher again
-					zoo.getData("/command", new CommandWatcher(zoo), null);
-					//for debugging
-					System.out.println(item + " " + quantity);
 				}
 				else if (tokens[0].equals("cancel")){
 					int orderNum = Integer.parseInt(tokens[1]);
@@ -81,36 +78,33 @@ public class CommandWatcher implements Watcher{
 						String reply = orderNum + " not found, no such order";
 						byte[] replyByte = reply.getBytes();
 						zoo.setData("/" + tokens[2], replyByte, -1);
-						//set watcher again
-						zoo.getData("/command", new CommandWatcher(zoo), null);
-						return;
 					}
-					String orderType = new String(zoo.getData("/orders/" + orderNum, false, null));
-					String[] orderInfo = orderType.split(" ");
-					String userName = orderInfo[1];
-					String itemType = orderInfo[2];
-					int purchasedNum = Integer.parseInt(orderInfo[3]);
-					//edit store
-					int quantity = (zoo.getData("/store/" + itemType, false, null)[0]);
-					quantity = quantity + purchasedNum;
-					byte[] byteQuantity = {(byte)quantity};
-					zoo.setData("/store/" + itemType, byteQuantity, -1);
-					//delete order
-					zoo.delete("/orders/" + orderNum, -1);
-					//delete customer order
-					zoo.delete("/customers/" + userName + "/" + orderNum, -1);
-					//reply
-					String reply = "Order " + orderNum + " is canceled";
-					byte[] replyByte = reply.getBytes();
-					zoo.setData("/" + userName, replyByte, -1);
-					//set watcher again
-					zoo.getData("/command", new CommandWatcher(zoo), null);
+					else{
+						String orderType = new String(zoo.getData("/orders/" + orderNum, false, null));
+						String[] orderInfo = orderType.split(" ");
+						String userName = orderInfo[1];
+						String itemType = orderInfo[2];
+						int purchasedNum = Integer.parseInt(orderInfo[3]);
+						//edit store
+						int quantity = (zoo.getData("/store/" + itemType, false, null)[0]);
+						quantity = quantity + purchasedNum;
+						byte[] byteQuantity = {(byte)quantity};
+						zoo.setData("/store/" + itemType, byteQuantity, -1);
+						//delete order
+						zoo.delete("/orders/" + orderNum, -1);
+						//delete customer order
+						zoo.delete("/customers/" + userName + "/" + orderNum, -1);
+						//reply
+						String reply = "Order " + orderNum + " is canceled";
+						byte[] replyByte = reply.getBytes();
+						zoo.setData("/" + userName, replyByte, -1);
+					}
 				}
 				else if (tokens[0].equals("search")){
 					List<String> children = zoo.getChildren("/customers/" + tokens[1], false);
 					String response = "";
 					for (String thisChild : children){
-						String data = new String(zoo.getData("/customers/" + tokens[1] + "/" + thisChild, false, null));
+						String data = new String(zoo.getData("/orders/" + thisChild, false, null));
 						String[] dataTokens = data.split(" ");
 						response += (thisChild + " " + dataTokens[2] + " " +  dataTokens[3] + "\n");
 						
@@ -118,11 +112,9 @@ public class CommandWatcher implements Watcher{
 					//send response
 					byte[] replyByte = response.getBytes();
 					zoo.setData("/" + tokens[1], replyByte, -1);
-					//set watcher again
-					zoo.getData("/command", new CommandWatcher(zoo), null);
 				}
 				else if (tokens[0].equals("list")){
-					List<String> children = zoo.getChildren("/store/", false);
+					List<String> children = zoo.getChildren("/store", false);
 					String response = "";
 					for (String thisChild : children){
 						int data = zoo.getData("/store/" + thisChild, false, null)[0];
@@ -132,11 +124,17 @@ public class CommandWatcher implements Watcher{
 					//send response
 					byte[] replyByte = response.getBytes();
 					zoo.setData("/" + tokens[1], replyByte, -1);
-					//set watcher again
-					zoo.getData("/command", new CommandWatcher(zoo), null);
+					
 				}
 		} catch (KeeperException ex){}
 			catch (InterruptedException ex){}
+		
+		try{
+			//set watcher again
+			zoo.getData("/command", new CommandWatcher(zoo), null);
+			System.out.println("watch set");
+		} catch (KeeperException ex){}
+		catch (InterruptedException ex){}
 					
 	}
 	

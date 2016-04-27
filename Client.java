@@ -12,9 +12,11 @@ import org.apache.zookeeper.KeeperException.Code;
 import org.apache.zookeeper.data.Stat;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.ZooDefs;
-import org.slf4j.Logger;
+import org.apache.log4j.Logger;
+//import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.log4j.BasicConfigurator;
+import org.apache.log4j.Level;
 public class Client{
 
 	static ZooKeeper zoo;
@@ -22,6 +24,7 @@ public class Client{
 	static boolean isConnected = false;
 	public static void main(String[] args){
 		org.apache.log4j.BasicConfigurator.configure();
+		Logger.getRootLogger().setLevel(Level.WARN);
 		String host = "192.168.56.101:2181,192.168.56.102:2181,192.168.56.103:2181";
 try{
 		zoo = new ZooKeeper(host,5000, new Watcher() {
@@ -45,7 +48,7 @@ try{
 		Watcher clientWatcher = new Watcher() { 
     public void process(WatchedEvent e) {
 			try{
-				System.out.println(zoo.getData("/" + myName, false, null));
+				System.out.println(new String(zoo.getData("/" + myName, false, null)));
 			} catch (KeeperException ex){}
 				catch (InterruptedException ex){}
     }
@@ -61,9 +64,22 @@ try{
 	try{
 	//zoo.setData("/command", sentMessageByte, -1);
 	//zoo.setData("/command", sentMessageByte, -1);
+	System.out.println("commands");
 		while (sc.hasNextLine()){
 			String cmd = sc.nextLine();
+	    cmd += " " + myName;
+			Watcher clientWatcher = new Watcher() { 
+    public void process(WatchedEvent e) {
+			try{
+				System.out.println(new String(zoo.getData("/" + myName, false, null)));
+			} catch (KeeperException ex){}
+				catch (InterruptedException ex){}
+    }
+};
+			zoo.getData("/" + myName, clientWatcher, null);
+			System.out.println("watch set");
 			zoo.setData("/command", cmd.getBytes(), -1);
+			
 			Thread.sleep(1000);
 		}
 	} catch (KeeperException e){}
