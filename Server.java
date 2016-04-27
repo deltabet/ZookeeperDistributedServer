@@ -1,3 +1,6 @@
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
 // import zookeeper classes
 import org.apache.zookeeper.KeeperException;
@@ -26,24 +29,6 @@ public class Server{
 		String host = "192.168.56.101:2181,192.168.56.102:2181,192.168.56.103:2181";
 		String inventoryPath = "inventory.txt";
 		System.out.printf("starting");
-		//Store myStore = new Store();
-    // parse the inventory file
-   /* try (BufferedReader br = new BufferedReader(new FileReader(new File(inventoryPath))))
-    {
-    	String line;
-    	while((line = br.readLine()) != null)
-    	{
-    		line = line.trim();
-    		if(!line.equals(""))
-    		{
-    			String[] info = line.split(" ");//\\s+
-    			myStore.products.add(info[0], Integer.parseInt(info[1]));
-    		}
-    	}
-    }catch(Exception e)
-    {
-    	e.printStackTrace();
-    }*/
 
 try{
 		zoo = new ZooKeeper(host,5000, new Watcher() {
@@ -68,13 +53,32 @@ try{
 		zoo.create("/command" , placeholder, ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
 	
 		zoo.create("/store", placeholder, ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
-		byte[] shoeCount = {20};
-		zoo.create("/store/shoes", shoeCount, ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
-		//set watch
+    // parse the inventory file
+  BufferedReader br = new BufferedReader(new FileReader(new File(inventoryPath)));
+    	String line;
+    	while((line = br.readLine()) != null)
+    	{
+    		line = line.trim();
+    		if(!line.equals(""))
+    		{
+    			String[] info = line.split(" ");
+					byte[] itemCount = {(byte) Integer.parseInt(info[1])};
+					zoo.create("/store/" + info[0], itemCount, ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+    		}
+    	}
+ 		//byte[] shoeCount = {20};
+		//zoo.create("/store/shoes", shoeCount, ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+		
+    	//format "customername item quantity"
+    	zoo.create("/orders", placeholder, ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+    	//format "#, #, #"
+    	zoo.create("/customers", placeholder, ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+    	//set watch
 		zoo.getData("/command", new CommandWatcher(zoo), null);
 			System.out.println("watching command kkkkkkkkkkkkkkkk");
 	} catch (KeeperException e){}
 		catch (InterruptedException ex){}
+		catch(IOException e) {}
 		/*for (String thisProduct : myStore.list().keySet()){
 	    byte[] data = {myStore.list().get(thisProduct)};
 			zoo.create("/store/" + thisProduct, data , ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
