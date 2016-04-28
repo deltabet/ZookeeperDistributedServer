@@ -1,3 +1,6 @@
+//Zookeeper connection initiation code was acquired from tutorialspoint.com/zookeeper
+
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
@@ -30,7 +33,7 @@ public class Server{
 		Logger.getLogger("org.apache.zookeeper").setLevel(Level.WARN);
 
 		//String host = "192.168.56.101:2181";
-		String host = "192.168.56.101:2181,192.168.56.102:2181,192.168.56.103:2181";
+		String host = "08:00:27:F8:D4:A0:2181,08:00:27:C6:6C:12:2181,08:00:27:4F:47:66:2181";
 		String inventoryPath = "inventory.txt";
 		System.out.printf("starting");
 
